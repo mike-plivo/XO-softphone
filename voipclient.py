@@ -9,7 +9,7 @@ import gtk
 import gobject
 from threading import Thread
 from sugar.activity import activity
-from iaxclient import IAXClient
+from iaxclient import *
 
 # we need gtk threads
 gtk.gdk.threads_init()
@@ -18,6 +18,86 @@ import sys
 def log(msg):
   sys.stdout.write(msg)
   sys.stdout.flush()
+
+
+class XOIAXClient(IAXClient):
+    def __init__(self, 
+               prefered_codec=IAXC_FORMAT_ALAW, 
+               other_codecs=[IAXC_FORMAT_ULAW, IAXC_FORMAT_GSM, IAXC_FORMAT_SPEEX, IAXC_FORMAT_ILBC], 
+               ringin=False,
+               ringout=False,
+               debug=False):
+	IAXClient.__init__(self, prefered_codec, other_codecs, ringin, ringout, debug)
+
+        # prototype for event handlers
+        protofunc = CFUNCTYPE(c_int, POINTER(Event))
+        self.handle_event_registration = protofunc(self._handle_event_registration)
+
+	 
+
+    def event_cb(self, ev):
+	if not ev:
+	    return 1
+	if ev.type == IAXC_EVENT_DTMF:
+	    self.log_debug("Dtmf Event")
+	    return 1
+	elif ev.type == IAXC_EVENT_STATE:
+	    return self.handle_event_state(ev)
+	elif ev.type == IAXC_EVENT_REGISTRATION:
+	    self.log_debug("Registration Event")
+	    return self.handle_event_registration(ev)
+	return 1
+
+    def _handle_event_registration(self, ev_state):
+	self.log_debug("Registration Event")
+	regev = ev_state.contents.ev.reg
+        return 1
+
+    def handle_event_state(self, ev_state):
+	self.log_debug("Call state Event")
+	st = self.get_event(ev_state)
+	callno = st.contents.callNo
+	if st:
+	    callstate =  st.contents.state
+	    self.log_debug("Callstate : %s" % str(callstate))
+	    if callstate == 0:
+		if self.ringid:
+		    self.stop_sound(self.ringid)
+		self.disconnected = True
+		self.log_debug("Call %d Hangup" % callno)
+		return 1
+
+	ringing = False
+	complete = False
+	outgoing = False
+	self.disconnected = False
+
+	if callstate & IAXC_CALL_STATE_RINGING:
+	    ringing = True
+	if callstate & IAXC_CALL_STATE_ACTIVE:
+	    if callstate & IAXC_CALL_STATE_COMPLETE:
+		complete = True
+	    if callstate & IAXC_CALL_STATE_OUTGOING:
+		outgoing = True
+	if outgoing:
+	    if ringing:
+		self.log_debug("Call %d OUT Ringing" % callno)
+		self.play_low_ring()
+	    elif complete:
+		self.stop_sound(self.ringid)
+		self.log_debug("Call %d OUT Complete" % callno)
+	    else:
+		self.log_debug("Call %d OUT Not Yet Accepted" % callno)
+	else:
+	    if ringing:
+		self.log_debug("Call %d IN Ringing" % callno)
+		self.play_high_ring()
+	    elif complete:
+		self.stop_sound(self.ringid)
+		self.log_debug("Call %d IN Complete" % callno)
+	    else:
+		self.log_debug("Call %d IN Not Yet Accepted" % callno)
+	return 1
 
 
 class Voipclient(activity.Activity):
@@ -100,9 +180,9 @@ class Voipclient(activity.Activity):
         password = password.strip()
     	host = self.raccount_fields['peer'].get_text()
         if password:
-          data = "%s:%s@%s/%s" % (username, password, host, num)
+	    data = "%s:%s@%s/%s" % (username, password, host, num)
         else:
-          data = "%s@%s/%s" % (username, host, num)
+	    data = "%s@%s/%s" % (username, host, num)
         self.reg_call(num)
 
 
@@ -116,15 +196,15 @@ class Voipclient(activity.Activity):
 
     def on_switch_register(self, button):
         if not self.use_register:
-          self.use_register = True
+	    self.use_register = True
         else:
-          self.use_register = False
+	    self.use_register = False
         if self.use_register:
-          self.callbox.hide_all()
-          self.rcallbox.show_all()
+	    self.callbox.hide_all()
+	    self.rcallbox.show_all()
         else:
-          self.rcallbox.hide_all()
-          self.callbox.show_all()
+	    self.rcallbox.hide_all()
+	    self.callbox.show_all()
 
 
     def make_rcallbox(self):
@@ -204,25 +284,25 @@ class Voipclient(activity.Activity):
 
 	self.dtmf_fields = {}
 	for dtmf in ('0','1','2','3','4','5','6','7','8','9','#','*'):
-	  self.dtmf_fields[dtmf] = gtk.Button(dtmf)
-	  self.dtmf_fields[dtmf].set_border_width(2)
-          self.dtmf_fields[dtmf].connect("clicked", self.on_dtmf_clicked)
-	  self.dtmf_fields[dtmf].set_sensitive(False)
+	    self.dtmf_fields[dtmf] = gtk.Button(dtmf)
+	    self.dtmf_fields[dtmf].set_border_width(2)
+	    self.dtmf_fields[dtmf].connect("clicked", self.on_dtmf_clicked)
+	    self.dtmf_fields[dtmf].set_sensitive(False)
 
         dtmfbox1 = gtk.HButtonBox()
         dtmfbox1.set_layout(gtk.BUTTONBOX_START)
         for dtmf in ('0','1','2','3'):
-          dtmfbox1.add(self.dtmf_fields[dtmf])
+	    dtmfbox1.add(self.dtmf_fields[dtmf])
 
         dtmfbox2 = gtk.HButtonBox()
         dtmfbox2.set_layout(gtk.BUTTONBOX_START)
         for dtmf in ('4','5','6','7'):
-          dtmfbox2.add(self.dtmf_fields[dtmf])
+	    dtmfbox2.add(self.dtmf_fields[dtmf])
 
         dtmfbox3 = gtk.HButtonBox()
         dtmfbox3.set_layout(gtk.BUTTONBOX_START)
         for dtmf in ('8','9','#','*'):
-          dtmfbox3.add(self.dtmf_fields[dtmf])
+	    dtmfbox3.add(self.dtmf_fields[dtmf])
 
 	self.dtmfbox.pack_start(dtmfbox1, False, False, 0)
 	self.dtmfbox.pack_start(dtmfbox2, False, False, 0)
@@ -248,7 +328,7 @@ class Voipclient(activity.Activity):
 	self.raccount_fields['peer'].set_sensitive(False)
 	self.raccount_fields['number'].set_sensitive(False)
 	for dtmf in self.dtmf_fields:
-	  self.dtmf_fields[dtmf].set_sensitive(True)
+	    self.dtmf_fields[dtmf].set_sensitive(True)
         self.dtmfbox.show_all()
       
         self.voip.call(number)
@@ -270,7 +350,7 @@ class Voipclient(activity.Activity):
 
     def __start_voip(self, username, password, peer, number):
 	try:
-	    self.voip = IAXClient(ringout=True, debug=True)
+	    self.voip = XOIAXClient(ringout=True, debug=True)
 	    _logger.info("IAXClient init ok")
 	except Exception, err:
 	    _logger.error("Cannot initialize IAXClient : %s" % str(err))
@@ -293,7 +373,7 @@ class Voipclient(activity.Activity):
 	self.account_fields['peer'].set_sensitive(False)
 	self.account_fields['number'].set_sensitive(False)
 	for dtmf in self.dtmf_fields:
-	  self.dtmf_fields[dtmf].set_sensitive(True)
+	    self.dtmf_fields[dtmf].set_sensitive(True)
         self.dtmfbox.show_all()
 
         self.voip.start_processing_thread()
@@ -310,7 +390,7 @@ class Voipclient(activity.Activity):
 
     def register_voip(self, username, password, peer):
 	try:
-	    self.voip = IAXClient(ringout=True, debug=True)
+	    self.voip = XOIAXClient(ringout=True, debug=True)
 	    _logger.info("IAXClient init ok")
 	except Exception, err:
 	    _logger.error("Cannot initialize IAXClient : %s" % str(err))
@@ -355,7 +435,7 @@ class Voipclient(activity.Activity):
 	self.raccount_fields['password'].set_text('')
 
 	for dtmf in self.dtmf_fields:
-	  self.dtmf_fields[dtmf].set_sensitive(False)
+	    self.dtmf_fields[dtmf].set_sensitive(False)
         self.dtmfbox.hide_all()
 
 

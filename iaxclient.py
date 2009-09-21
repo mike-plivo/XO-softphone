@@ -485,7 +485,7 @@ class IAXClient(IAXWrapper):
     elif ev.type == IAXC_EVENT_STATE:
       return self.handle_event_state(ev)
     elif ev.type == IAXC_EVENT_REGISTRATION:
-      self.log_debug("Reg received")
+      self.log_debug("Register event received")
       return 1
     return 1
 
