@@ -42,6 +42,12 @@ IAXC_EVENT_VIDEOSTATS    = 11
 
 IAXC_EVENT_BUFSIZ = 256
 
+
+IAXC_REGISTRATION_REPLY_ACK     = 18   # registration accepted
+IAXC_REGISTRATION_REPLY_REJ     = 30   # registration rejected
+IAXC_REGISTRATION_REPLY_TIMEOUT = 6    # registraton timeout
+
+
 class Timeval(Structure):
   pass
 Timeval._fields_ = [("tv_sec", c_int),
@@ -330,6 +336,9 @@ class IAXClient(IAXWrapper):
     for x in self.valid_dtmfs:
       self.tones[x] = self._build_dtmf_tone(x)
 
+    # set event callback
+    self.set_event_callback(self.event_cb)
+
   def _build_dtmf_tone(self, dtmf):
     fq1 = DTMF_HZ[dtmf][0]
     fq2 = DTMF_HZ[dtmf][1] 
@@ -364,8 +373,8 @@ class IAXClient(IAXWrapper):
       self.millisleep(2500)
 
   def _log(self, msg):
-      sys.stderr.write(msg+'\n')
-      sys.stderr.flush()
+      sys.stdout.write(msg+'\n')
+      sys.stdout.flush()
 
   def log_debug(self, msg):
     if self.debug:
@@ -428,7 +437,6 @@ class IAXClient(IAXWrapper):
   def start(self, iaxuser, host, exten, iaxpw=None, context=None, port=4569, callername="Wphoniax", callernum="0000"):
     self.set_callerid(callername, callernum)
     self.set_silence_threshold(-99.0)
-    self.set_event_callback(self.event_cb)
     peer = iaxuser
     if iaxpw:
       peer += ":%s" % iaxpw
@@ -447,7 +455,6 @@ class IAXClient(IAXWrapper):
   def setup(self, iaxuser, host, exten, iaxpw=None, context=None, port=4569, callername="Wphoniax", callernum="0000"):
     self.set_callerid(callername, callernum)
     self.set_silence_threshold(-99.0)
-    self.set_event_callback(self.event_cb)
     peer = iaxuser
     if iaxpw:
       peer += ":%s" % iaxpw
@@ -470,7 +477,6 @@ class IAXClient(IAXWrapper):
   def event_cb(self, ev):
     if not ev:
       return 1
-    self.log_debug(str(ev))
     if ev.type == IAXC_EVENT_DTMF:
       self.log_debug("Dtmf received")
       return 1
