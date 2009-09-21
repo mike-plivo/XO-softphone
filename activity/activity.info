@@ -1,0 +1,8 @@
+[Activity]
+name = Voipclient
+activity_version = 1
+service_name = org.laptop.Voipclient
+exec = sugar-activity voipclient.Voipclient
+icon = voipclient
+mime_types =
+license = GPLv2+
