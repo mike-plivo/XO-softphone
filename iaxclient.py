@@ -42,10 +42,12 @@ IAXC_EVENT_VIDEOSTATS    = 11
 
 IAXC_EVENT_BUFSIZ = 256
 
-
-IAXC_REGISTRATION_REPLY_ACK     = 18   # registration accepted
-IAXC_REGISTRATION_REPLY_REJ     = 30   # registration rejected
-IAXC_REGISTRATION_REPLY_TIMEOUT = 6    # registraton timeout
+# registration accepted
+IAXC_REGISTRATION_REPLY_ACK     = 18
+# registration rejected
+IAXC_REGISTRATION_REPLY_REJ     = 30
+# registraton timeout
+IAXC_REGISTRATION_REPLY_TIMEOUT = 6
 
 
 class Timeval(Structure):
