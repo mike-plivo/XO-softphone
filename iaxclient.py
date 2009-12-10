@@ -40,6 +40,13 @@ IAXC_EVENT_DTMF          = 9
 IAXC_EVENT_AUDIO         = 10
 IAXC_EVENT_VIDEOSTATS    = 11
 
+IAXC_AUDIO_PREF_RECV_LOCAL_RAW      = (1 << 0)
+IAXC_AUDIO_PREF_RECV_LOCAL_ENCODED  = (1 << 1)
+IAXC_AUDIO_PREF_RECV_REMOTE_RAW     = (1 << 2)
+IAXC_AUDIO_PREF_RECV_REMOTE_ENCODED = (1 << 3)
+IAXC_AUDIO_PREF_SEND_DISABLE        = (1 << 4)
+IAXC_AUDIO_PREF_RECV_DISABLE        = (1 << 5)
+
 IAXC_EVENT_BUFSIZ = 256
 
 # registration accepted
@@ -197,6 +204,28 @@ DTMF_HZ = {'0':(1336, 941),
            '*':(1209, 941),
            '#':(1477, 941)}
 
+def _build_tone(fq1, fq2, length):
+  tone = Sound()
+  memset(byref(tone), c_int(0), sizeof(tone))
+  tone.len = length
+  ArrayData = c_short * tone.len
+  data = ArrayData()
+  data_l = []
+  for x in xrange(0, tone.len):
+    u1 = (0x7fff*0.4*math.sin(float(x)*fq1*math.pi/8000))
+    u2 = (0x7fff*0.4*math.sin(float(x)*fq2*math.pi/8000))
+    d = c_short(int(u1 + u2))
+    data[x] = d
+  tone.repeat = 0
+  tone.data = data
+  return tone
+
+def get_dtmf_tone(dtmf):
+  fq1 = DTMF_HZ[dtmf][0]
+  fq2 = DTMF_HZ[dtmf][1] 
+  return _build_tone(fq1, fq2, 600)
+
+
 class IAXWrapper:
   '''Wrapper class for iax client C library'''
   def __init__(self):
@@ -223,6 +252,10 @@ class IAXWrapper:
     self._send_dtmf = self.iax.iaxc_send_dtmf
     self._send_dtmf.argtypes = [c_char]
 
+    self.tones = {} 
+    for dtmf in DTMF_HZ.keys():
+     self.tones[dtmf] = get_dtmf_tone(dtmf)
+
   def initialize(self, maxcalls=1):
     self.iax.iaxc_initialize(maxcalls)
 
@@ -230,8 +263,31 @@ class IAXWrapper:
     srcport = self.iax.iaxc_set_preferred_source_udp_port(sourceport)
     return srcport
 
+  def set_audio_prefs(self, prefs):
+    self.iax.iaxc_set_audio_prefs(c_uint(prefs))
+
+  def get_audio_prefs(self):
+    return self.iax.iaxc_get_audio_prefs()
+
   def set_audio_output(self, audiomode=0):
     self.iax.iaxc_set_audio_output(audiomode)
+
+  def get_audio_output(self):
+    return self.iax.iaxc_get_audio_output()
+
+  def set_input_level(self, level=1.0):
+    newlevel = float(level)
+    self.iax.iaxc_input_level_set(c_float(newlevel))
+
+  def get_input_level(self):
+    return self.iax.iaxc_input_level_get()
+
+  def set_output_level(self, level=1.0):
+    newlevel = float(level)
+    self.iax.iaxc_output_level_set(c_float(newlevel))
+
+  def get_output_level(self):
+    return self.iax.iaxc_output_level_get()
 
   def set_formats(self, preferred, allowed):
     self.iax.iaxc_set_formats(preferred, allowed)
@@ -239,8 +295,14 @@ class IAXWrapper:
   def set_callerid(self, name, number):
     self.iax.iaxc_set_callerid(name, number)
 
-  def send_dtmf(self, digit):
+  def send_dtmf(self, digit, sound=False):
     self._send_dtmf(c_char(digit))
+    if sound:
+      self.play_sound(self.tones[digit], 1)
+
+  def play_dtmf(self, dtmf):
+    tone = get_dtmf_tone(dtmf)
+    self.play_sound(tone, 1)
 
   def play_sound(self, sound, ring):
     soundid = self._play_sound(byref(sound), c_int(ring))
