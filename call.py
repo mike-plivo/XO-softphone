@@ -114,9 +114,19 @@ class Call:
       callstate =  st.contents.state
       print "Callstate : %s" % str(callstate)
       if callstate & IAXC_CALL_STATE_RINGING:
-        print "Ringing ..."
-      if callstate & IAXC_CALL_STATE_COMPLETE and callstate & IAXC_CALL_STATE_ACTIVE:
-        print "Complete"
+        print "Call %d Ringing" % callno
+      if callstate & IAXC_CALL_STATE_COMPLETE:
+        print "Call %d Complete" % callno
+      if callstate & IAXC_CALL_STATE_ACTIVE:
+        print "Call %d Active" % callno
+      if callstate & IAXC_CALL_STATE_OUTGOING:
+        print "Call %d Outgoing" % callno
+      if callstate & IAXC_CALL_STATE_SELECTED:
+        print "Call %d Selected" % callno
+      if callstate & IAXC_CALL_STATE_BUSY:
+        print "Call %d Busy" % callno
+      if callstate & IAXC_CALL_STATE_FREE:
+        print "Call %d Free" % callno
       if callstate == 0:
         self.disconnected = True
         print "Call %d Hangup" % callno
