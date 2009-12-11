@@ -24,7 +24,6 @@ class Call:
     self.iax.set_formats(pref_codec, others_codecs)
     self.iax.set_callerid(callername, callernum)
     self.iax.set_silence_threshold(-99.0)
-    self.pref = 0
     self.iax.set_audio_prefs(0)
     self.iax.set_event_callback(self.event_cb)
 
@@ -50,56 +49,49 @@ class Call:
     self.disconnected = False
     self.iax.start_processing_thread()
 
-  def is_in_muted(self):
-    ret = (self.pref & IAXC_AUDIO_PREF_RECV_DISABLE)
-    return ret != 0
-
   def in_mute(self):
-    if not self.is_in_muted():
-      self.pref |= IAXC_AUDIO_PREF_RECV_DISABLE
-      self.iax.set_audio_prefs(self.pref)
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_RECV_DISABLE:
+      return False
+    else:
+      prefs |= IAXC_AUDIO_PREF_RECV_DISABLE
+      self.iax.set_audio_prefs(prefs)
       return True
-    return False
 
   def in_unmute(self):
-    if self.is_in_muted():
-      self.pref &= ~IAXC_AUDIO_PREF_RECV_DISABLE
-      self.iax.set_audio_prefs(self.pref)
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_RECV_DISABLE:
+      prefs &= ~IAXC_AUDIO_PREF_RECV_DISABLE
+      self.iax.set_audio_prefs(prefs)
       return True
-    return False
-
-  def is_out_muted(self):
-    ret = (self.pref & IAXC_AUDIO_PREF_SEND_DISABLE)
-    return ret != 0
+    else:
+      return False
 
   def out_mute(self):
-    if self.is_out_muted():
-      print "Already Out muted"
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_SEND_DISABLE:
+      return False
     else:
-      self.pref |= IAXC_AUDIO_PREF_SEND_DISABLE
-      self.iax.set_audio_prefs(self.pref)
-      print "Out Muted"
+      prefs |= IAXC_AUDIO_PREF_SEND_DISABLE
+      self.iax.set_audio_prefs(prefs)
+      return True
 
   def out_unmute(self):
-    if self.is_out_muted():
-      self.pref &= ~IAXC_AUDIO_PREF_SEND_DISABLE
-      self.iax.set_audio_prefs(self.pref)
-      print "Out unmuted"
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_SEND_DISABLE:
+      prefs &= ~IAXC_AUDIO_PREF_SEND_DISABLE
+      self.iax.set_audio_prefs(prefs)
+      return True
     else:
-      print "Not Out muted"
+      return False
 
   def all_mute(self):
-    self.pref = 0
-    self.pref |= IAXC_AUDIO_PREF_SEND_DISABLE
-    self.pref |= IAXC_AUDIO_PREF_RECV_DISABLE
-    self.iax.set_audio_prefs(self.pref)
-    print "Out/In muted"
+    self.out_mute()
+    self.in_mute()
 
   def all_unmute(self):
-    self.pref = 0
-    self.iax.set_audio_prefs(self.pref)
-    print "Out/In unmuted"
-
+    self.out_unmute()
+    self.in_unmute()
 
   def event_cb(self, ev):
     if not ev:

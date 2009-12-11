@@ -29,52 +29,55 @@ class Call:
     if context:
       peer += "@%s" % context
 
-    self.pref = 0
-    #prefs |= IAXC_AUDIO_PREF_RECV_DISABLE
-
     self.iax.set_audio_prefs(0)
 
     self.iax.call(peer)
 
-  def is_in_muted(self):
-    ret = (self.pref & IAXC_AUDIO_PREF_RECV_DISABLE)
-    return ret != 0
-
   def in_mute(self):
-    if self.is_in_muted():
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_RECV_DISABLE:
       print "Already In muted"
+      return
     else:
-      self.pref |= IAXC_AUDIO_PREF_RECV_DISABLE
-      self.iax.set_audio_prefs(self.pref)
+      prefs |= IAXC_AUDIO_PREF_RECV_DISABLE
+      self.iax.set_audio_prefs(prefs)
       print "In Muted"
+      return
 
   def in_unmute(self):
-    if self.is_in_muted():
-      self.pref &= ~IAXC_AUDIO_PREF_RECV_DISABLE
-      self.iax.set_audio_prefs(self.pref)
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_RECV_DISABLE:
+      prefs &= ~IAXC_AUDIO_PREF_RECV_DISABLE
+      self.iax.set_audio_prefs(prefs)
       print "In unmuted"
+      return
     else:
-      print "Not In muted"
-
-  def is_out_muted(self):
-    ret = (self.pref & IAXC_AUDIO_PREF_SEND_DISABLE)
-    return ret != 0
+      print "Already In unmuted"
+      return
 
   def out_mute(self):
-    if self.is_out_muted():
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_SEND_DISABLE:
       print "Already Out muted"
+      return
     else:
-      self.pref |= IAXC_AUDIO_PREF_SEND_DISABLE
-      self.iax.set_audio_prefs(self.pref)
-      print "Out Muted"
+      prefs |= IAXC_AUDIO_PREF_SEND_DISABLE
+      self.iax.set_audio_prefs(prefs)
+      print "Out muted"
+      return
+    
 
   def out_unmute(self):
-    if self.is_out_muted():
-      self.pref &= ~IAXC_AUDIO_PREF_SEND_DISABLE
-      self.iax.set_audio_prefs(self.pref)
+    prefs = self.iax.get_audio_prefs()
+    if prefs & IAXC_AUDIO_PREF_SEND_DISABLE:
+      prefs &= ~IAXC_AUDIO_PREF_SEND_DISABLE
+      self.iax.set_audio_prefs(prefs)
       print "Out unmuted"
+      return
     else:
-      print "Not Out muted"
+      print "ALready Out unmuted"
+      return
+
       
 
   def run(self):
