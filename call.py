@@ -45,8 +45,8 @@ class Call:
   def call(self, peer):
     self.pref = 0
     self.iax.set_audio_prefs(0)
-    self.iax.call(peer)
     self.disconnected = False
+    self.iax.call(peer)
     self.iax.start_processing_thread()
 
   def in_mute(self):
@@ -113,6 +113,10 @@ class Call:
     if st:
       callstate =  st.contents.state
       print "Callstate : %s" % str(callstate)
+      if callstate & IAXC_CALL_STATE_RINGING:
+        print "Ringing ..."
+      if callstate & IAXC_CALL_STATE_COMPLETE and callstate & IAXC_CALL_STATE_ACTIVE:
+        print "Complete"
       if callstate == 0:
         self.disconnected = True
         print "Call %d Hangup" % callno
